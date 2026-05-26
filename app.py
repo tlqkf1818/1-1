@@ -1,4 +1,5 @@
-pip install pygame import pygame
+pip install pygame
+import pygame
 import random
 
 # 초기 설정
