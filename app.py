@@ -1,3 +1,7 @@
+File "/mount/src/1-1/app.py", line 1
+  pip install pygame
+      ^
+SyntaxError: invalid syntax
 pip install pygame
 import pygame
 import random
