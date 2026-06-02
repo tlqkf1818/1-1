@@ -1,99 +1,103 @@
-File "/mount/src/1-1/app.py", line 1
-  pip install pygame
-      ^
-SyntaxError: invalid syntax
-pip install pygame
-import pygame
-import random
+import streamlit as st
+from google import genai
 
-# 초기 설정
-pygame.init()
-
-WIDTH, HEIGHT = 600, 400
-BLOCK = 20
-
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Snake Game")
-
-clock = pygame.time.Clock()
-font = pygame.font.SysFont(None, 35)
-
-# 색상
-WHITE = (255, 255, 255)
-GREEN = (0, 200, 0)
-RED = (200, 0, 0)
-BLACK = (0, 0, 0)
-
-# 뱀 초기 위치
-snake = [(100, 100)]
-dx, dy = BLOCK, 0
-
-# 음식 위치
-food = (
-    random.randrange(0, WIDTH, BLOCK),
-    random.randrange(0, HEIGHT, BLOCK)
+# 페이지 설정
+st.set_page_config(
+    page_title="연애 상담 챗봇",
+    page_icon="💖"
 )
 
-score = 0
-running = True
+st.title("💖 연애 상담 챗봇")
+st.caption("Gemini 2.5 Flash Lite 기반")
 
-while running:
-    clock.tick(10)
+# API 키 확인
+try:
+    api_key = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    st.error("GEMINI_API_KEY가 Secrets에 설정되지 않았습니다.")
+    st.stop()
 
-    # 이벤트 처리
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+# Gemini 클라이언트 생성
+try:
+    client = genai.Client(api_key=api_key)
+except Exception as e:
+    st.error(f"Gemini 초기화 오류: {e}")
+    st.stop()
 
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP and dy == 0:
-                dx, dy = 0, -BLOCK
-            elif event.key == pygame.K_DOWN and dy == 0:
-                dx, dy = 0, BLOCK
-            elif event.key == pygame.K_LEFT and dx == 0:
-                dx, dy = -BLOCK, 0
-            elif event.key == pygame.K_RIGHT and dx == 0:
-                dx, dy = BLOCK, 0
+# 채팅 기록 저장
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {
+            "role": "assistant",
+            "content": "안녕하세요! 연애 고민이 있다면 편하게 이야기해 주세요 😊"
+        }
+    ]
 
-    # 머리 이동
-    head_x = snake[0][0] + dx
-    head_y = snake[0][1] + dy
-    new_head = (head_x, head_y)
+# 기존 메시지 출력
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-    # 벽 충돌
-    if (
-        head_x < 0 or head_x >= WIDTH or
-        head_y < 0 or head_y >= HEIGHT or
-        new_head in snake
-    ):
-        running = False
+# 사용자 입력
+prompt = st.chat_input("메시지를 입력하세요")
 
-    snake.insert(0, new_head)
+if prompt:
+    # 사용자 메시지 저장
+    st.session_state.messages.append(
+        {"role": "user", "content": prompt}
+    )
 
-    # 음식 먹기
-    if new_head == food:
-        score += 1
-        food = (
-            random.randrange(0, WIDTH, BLOCK),
-            random.randrange(0, HEIGHT, BLOCK)
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # 대화 기록 생성
+    conversation = ""
+
+    for msg in st.session_state.messages:
+        role = "사용자" if msg["role"] == "user" else "상담사"
+        conversation += f"{role}: {msg['content']}\n"
+
+    system_prompt = """
+너는 친절한 연애 상담 챗봇이다.
+
+규칙:
+- 공감하는 말투 사용
+- 현실적인 조언 제공
+- 지나치게 단정하지 않기
+- 답변은 너무 길지 않게
+- 한국어로 답변
+"""
+
+    try:
+        with st.chat_message("assistant"):
+            with st.spinner("생각 중..."):
+
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash-lite",
+                    contents=f"""
+{system_prompt}
+
+대화 내용:
+{conversation}
+
+상담사 답변:
+"""
+                )
+
+                answer = response.text
+
+                st.markdown(answer)
+
+        st.session_state.messages.append(
+            {"role": "assistant", "content": answer}
         )
-    else:
-        snake.pop()
 
-    # 화면 그리기
-    screen.fill(BLACK)
+    except Exception as e:
+        error_msg = f"오류가 발생했습니다: {e}"
 
-    # 음식
-    pygame.draw.rect(screen, RED, (*food, BLOCK, BLOCK))
+        with st.chat_message("assistant"):
+            st.error(error_msg)
 
-    # 뱀
-    for part in snake:
-        pygame.draw.rect(screen, GREEN, (*part, BLOCK, BLOCK))
-
-    # 점수
-    score_text = font.render(f"Score: {score}", True, WHITE)
-    screen.blit(score_text, (10, 10))
-
-    pygame.display.update()
-
-pygame.quit()
+        st.session_state.messages.append(
+            {"role": "assistant", "content": error_msg}
+        )
