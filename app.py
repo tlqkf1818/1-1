@@ -3,11 +3,11 @@ from google import genai
 
 # 페이지 설정
 st.set_page_config(
-    page_title="연애 상담 챗봇",
+    page_title="상담 챗봇",
     page_icon="💖"
 )
 
-st.title("💖 연애 상담 챗봇")
+st.title("챗봇")
 st.caption("Gemini 2.5 Flash Lite 기반")
 
 # API 키 확인
@@ -29,7 +29,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = [
         {
             "role": "assistant",
-            "content": "안녕하세요! 연애 고민이 있다면 편하게 이야기해 주세요 😊"
+            "content": "안녕하세요! 고민이 있다면 편하게 이야기해 주세요 😊"
         }
     ]
 
